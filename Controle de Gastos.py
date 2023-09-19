@@ -20,6 +20,7 @@ months = {
     9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
 }
 
+graph_type = ['Por mês', 'Por tipo', 'Por orçamento']  # graphic types
 
 def confirm():
 
@@ -35,9 +36,8 @@ def error():
 
 class Despesa:
 
-    def __init__(self, grafico):
+    def __init__(self):
 
-        self.grafico = grafico
         pass
 
     def add_expense(self):  # add expense to the csv list
@@ -68,10 +68,6 @@ class Despesa:
             df_expense = df_expense.drop('Ordenation', axis=1)
             df_expense.to_csv('despesas.csv', index=False)
 
-            self.grafico.per_type()
-            self.grafico.per_month()
-            self.grafico.per_budget_type()
-
         else:
             error()
 
@@ -86,9 +82,6 @@ class Despesa:
                 df_expense.to_csv('despesas.csv', index=False)
                 expenses.destroy()
                 self.list_expense()
-                self.grafico.per_type()
-                self.grafico.per_month()
-                self.grafico.per_budget_type()
             else:
                 expenses.focus()
 
@@ -153,8 +146,7 @@ class Despesa:
 
 class Orcamento:
 
-    def __init__(self, grafico):
-        self.grafico = grafico
+    def __init__(self):
         pass
 
     def add_budget(self):  # add budget to the csv list
@@ -168,13 +160,10 @@ class Orcamento:
                      })
             df_budget.loc[df_budget['Mês'] == budget_month.get(), ['Valor']] = budget_value.get()
             df_budget.to_csv('orçamento.csv', index=False)
-            self.grafico.per_type()
-            self.grafico.per_month()
-            self.grafico.per_budget_type()
         else:
             error()
 
-    def add_type_budget(self):
+    def add_type_budget(self):  # add budget to a expense type
         if budget_type.get() and budget_type_value.get():
             try:
                 df_type_budget = pd.read_csv('orçamento_tipo.csv')
@@ -186,14 +175,10 @@ class Orcamento:
                 )
             df_type_budget.loc[df_type_budget['Tipo'] == budget_type.get(), ['Orçamento']] = budget_type_value.get()
             df_type_budget.to_csv('orçamento_tipo.csv', index=False)
-            self.grafico.per_type()
-            self.grafico.per_month()
-            self.grafico.per_budget_type()
         else:
             error()
 
-
-    def list_type_budget(self):
+    def list_type_budget(self):  # create a list of budget per type
 
         try:
             df_type_budget = pd.read_csv('orçamento_tipo.csv')
@@ -239,47 +224,13 @@ class Orcamento:
 class Graphics:
 
     def __init__(self):
+        self.canvas_per_month = None
+        self.canvas_per_type = None
+        self.canvas_per_budget = None
+        self.budget_month_type = None
         pass
 
-    def per_type(self):
-
-        try:
-            df_budget = pd.read_csv('orçamento.csv')
-        except:
-            df_budget = pd.DataFrame(
-                {'Mês': months,
-                 'Valor': 0
-                 })
-
-        try:
-            df_expense = pd.read_csv('despesas.csv')
-        except:
-            df_expense = pd.DataFrame(
-                {
-                    "Tipo": [type.get()],
-                    "Valor": [value.get()],
-                    "Data": [date.get()],
-                    "Descrição": [description.get()],
-                }
-            )
-
-        df_expense = df_expense.groupby(by='Tipo', as_index=False)['Valor'].sum()
-
-        figure = Figure(figsize=(5, 2))
-        subplot = figure.add_subplot(111)
-        subplot.bar(df_expense['Tipo'], df_expense['Valor'])
-
-        canvas = FigureCanvasTkAgg(figure)
-        canvas_widget = canvas.get_tk_widget()
-        canvas_widget.grid(
-            row=5,
-            column=5,
-            rowspan=5,
-            sticky="nsew",
-            padx=10,
-            pady=10
-        )
-    def per_month(self):
+    def per_month(self):  # create a graphic of expense e budget per month
 
         try:
             df_budget = pd.read_csv('orçamento.csv')
@@ -307,25 +258,73 @@ class Graphics:
         df_expense = df_expense.sort_values(by='Mês')
         df_expense['Mês'] = df_expense['Mês'].map(months)
 
-        figure = Figure(figsize=(5, 2))
+        figure = Figure(figsize=(8, 4))
+        figure.subplots_adjust(bottom=0.2)
         subplot = figure.add_subplot(111)
         height = 0.35
         index = np.arange(len(df_expense['Mês']))
         subplot.bar(index-height/2, df_expense['Valor'], height, tick_label=df_expense['Mês'])
         subplot.bar(index+height/2, df_budget['Valor'], height)
+        subplot.set_xticklabels(df_expense['Mês'], rotation=45)
+
+
 
         canvas = FigureCanvasTkAgg(figure)
-        canvas_widget = canvas.get_tk_widget()
-        canvas_widget.grid(
-            row=0,
+        self.canvas_per_month = canvas.get_tk_widget()
+        self.canvas_per_month.grid(
+            row=2,
             column=5,
-            rowspan=5,
+            rowspan=10,
             sticky="nsew",
             padx=10,
             pady=10
         )
 
-    def per_budget_type(self, *event):
+    def per_type(self):  # create a graphic of expenses per type
+
+        try:
+            df_budget = pd.read_csv('orçamento.csv')
+        except:
+            df_budget = pd.DataFrame(
+                {'Mês': months,
+                 'Valor': 0
+                 })
+
+        try:
+            df_expense = pd.read_csv('despesas.csv')
+        except:
+            df_expense = pd.DataFrame(
+                {
+                    "Tipo": [type.get()],
+                    "Valor": [value.get()],
+                    "Data": [date.get()],
+                    "Descrição": [description.get()],
+                }
+            )
+
+        df_expense = df_expense.groupby(by='Tipo', as_index=False)['Valor'].sum()
+
+        figure = Figure(figsize=(8, 4))
+        figure.subplots_adjust(bottom=0.2)
+        subplot = figure.add_subplot(111)
+        subplot.bar(df_expense['Tipo'], df_expense['Valor'])
+        subplot.set_xticklabels(df_expense['Tipo'], rotation=45)
+
+        canvas = FigureCanvasTkAgg(figure)
+        self.canvas_per_type = canvas.get_tk_widget()
+        self.canvas_per_type.grid(
+            row=2,
+            column=5,
+            rowspan=10,
+            sticky="nsew",
+            padx=10,
+            pady=10
+        )
+
+    def per_budget_type(self, *event):  # create a graphic of expenses per budget type on selected month
+
+        if self.canvas_per_budget is not None:
+            self.canvas_per_budget.destroy()
 
         try:
             df_budget = pd.read_csv('orçamento_tipo.csv')
@@ -351,38 +350,85 @@ class Graphics:
         df_expense['Mês'] = df_expense['Data'].dt.month
         df_expense = df_expense.groupby(by=['Tipo', 'Mês'], as_index=False)['Valor'].sum()
         df_expense['Mês'] = df_expense['Mês'].map(months)
-        month = budget_month_type.get()
+        month = self.budget_month_type.get()
         df_expense = df_expense.loc[df_expense['Mês'] == month]
         df_total = df_budget.merge(df_expense, on='Tipo', how='left')
         df_total = df_total.fillna(0)
 
-        figure = Figure(figsize=(5, 2))
+        figure = Figure(figsize=(8, 4))
+        figure.subplots_adjust(bottom=0.2)
         subplot = figure.add_subplot(111)
         height = 0.35
         index = np.arange(len(df_total['Tipo']))
         subplot.bar(index - height / 2, df_total['Valor'], height, tick_label=df_total['Tipo'])
         subplot.bar(index + height / 2, df_total['Orçamento'], height)
+        subplot.set_xticklabels(df_total['Tipo'], rotation=45)
 
         canvas = FigureCanvasTkAgg(figure)
-        canvas_widget = canvas.get_tk_widget()
-        canvas_widget.grid(
-            row=11,
+        self.canvas_per_budget = canvas.get_tk_widget()
+        self.canvas_per_budget.grid(
+            row=3,
             column=5,
-            rowspan=5,
+            rowspan=9,
             sticky="nsew",
             padx=10,
             pady=10
         )
 
+    def select_graph(self, *event):  # create a graphic of the selected option
+        if select_graphics.get() == graph_type[0]:
 
-window.geometry("1450x850+100+100")
+            if self.canvas_per_type is not None:
+                self.canvas_per_type.destroy()
+            if self.canvas_per_budget is not None:
+                print('per_budget')
+                self.canvas_per_budget.destroy()
+            if self.budget_month_type is not None:
+                self.budget_month_type.destroy()
+
+            grafico.per_month()
+
+
+        elif select_graphics.get() == graph_type[1]:
+
+            if self.canvas_per_month is not None:
+                self.canvas_per_month.destroy()
+            if self.canvas_per_budget is not None:
+                self.canvas_per_budget.destroy()
+            if self.budget_month_type is not None:
+                self.budget_month_type.destroy()
+
+            grafico.per_type()
+
+        elif select_graphics.get() == graph_type[2]:
+
+            if self.canvas_per_type is not None:
+                self.canvas_per_type.destroy()
+            if self.canvas_per_month is not None:
+                self.canvas_per_month.destroy()
+            if self.budget_month_type is not None:
+                self.budget_month_type.destroy()
+
+            self.budget_month_type = ttk.Combobox(window, values=list(months.values()))
+            self.budget_month_type.grid(
+                row=2,
+                column=5,
+                sticky="nsew",
+                padx=10,
+                pady=10
+            )
+            self.budget_month_type.bind("<<ComboboxSelected>>", grafico.per_budget_type)
+
+
+
+window.geometry(f"{window.winfo_screenwidth()}x{window.winfo_screenheight()}")
 window.title("Controle de Gastos")
 
 grafico = Graphics()
-despesa = Despesa(grafico)
-orcamento = Orcamento(grafico)
+despesa = Despesa()
+orcamento = Orcamento()
 
-
+'''
 title = tk.Label(
     text="Controle de Gastos",
     bg="#6EBAF8",
@@ -402,7 +448,7 @@ title.grid(
     padx=10,
     pady=10
 )
-
+'''
 budget_title = tk.Label(
     text="Orçamento",
     relief="ridge",
@@ -678,15 +724,7 @@ list_expense.grid(
     pady=10
 )
 
-budget_month_type = ttk.Combobox(window, values=list(months.values()))
-budget_month_type.grid(
-    row=10,
-    column=5,
-    sticky="nsew",
-    padx=10,
-    pady=10
-)
-budget_month_type.bind("<<ComboboxSelected>>", grafico.per_budget_type)
+
 '''
 graphic_title = tk.Label(
     text="Grafico",
@@ -701,8 +739,16 @@ graphic_title.grid(
     pady=10
 )
 '''
-grafico.per_month()
-grafico.per_type()
-grafico.per_budget_type()
+
+select_graphics = ttk.Combobox(window, values=graph_type)
+select_graphics.grid(
+    row=1,
+    column=5,
+    sticky="nsew",
+    padx=10,
+    pady=10
+
+)
+select_graphics.bind("<<ComboboxSelected>>", grafico.select_graph)
 
 window.mainloop()
